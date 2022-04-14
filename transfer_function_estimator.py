@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 
 ABSMODES = ["median"]
-PHASEMODES = ["full"]
+PHASEMODES = ["full", "zero"]
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -36,13 +36,18 @@ def main():
 
     # Estimate magnitude response
     if args.absmode == "median":
-        H_abs = estimate_abs_median(H_blocks)
+        H_abs = np.median(np.abs(H_blocks), axis=0)
     else:
         raise ValueError(f"Unknown abs mode {args.absmode!r} - valid options: {ABSMODES!r}")
 
+    # Normalize magnitude response
+    H_abs /= np.median(H_abs)
+
     # Estimate phase response
     if args.phasemode == "full":
-        H_angle = estimate_phase_full(H_full)
+        H_angle = np.angle(H_full)
+    elif args.phasemode == "zero":
+        H_angle = np.zeros(args.length)
     else:
         raise ValueError(f"Unknown phase mode {args.phasemode!r} - valid options: {PHASEMODES!r}")
 
@@ -53,14 +58,6 @@ def main():
     h = calculate_impulse_response(H)
     save_impulse_response(f"{args.output}.wav", fs, h)
     plot_results(H, h, fs, f"{args.output}.png")
-
-def estimate_phase_full(H_full):
-    return np.angle(H_full)
-
-def estimate_abs_median(H_blocks, percentile=50):
-    H_abs = np.percentile(np.abs(H_blocks), 50, axis=0) 
-    H_abs /= np.median(H_abs)
-    return H_abs
 
 def plot_results(H, h, fs, filename):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[8, 6])
