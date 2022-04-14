@@ -58,6 +58,7 @@ def main():
     h = calculate_impulse_response(H)
     save_impulse_response(f"{args.output}.wav", fs, h)
     plot_results(H, h, fs, f"{args.output}.png")
+    plt.show()
 
 def plot_results(H, h, fs, filename):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[8, 6])
