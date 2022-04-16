@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--output", "-o", help="Label used for the output file", default="ir_" + str(int(time.time())), type=str)
     parser.add_argument("--absmode", "-a", help=f"Mode for estimating absolute value ({'|'.join(ABSMODES)})", default="median", type=str)
     parser.add_argument("--phasemode", "-p", help=f"Mode for estimating phase ({'|'.join(PHASEMODES)})", default="full", type=str)
+    parser.add_argument("--normfreq", "-f", help="Frequency where the impulse response is normalized to zero gain", default=200, type=float)
 
     args = parser.parse_args()
 
@@ -40,9 +41,6 @@ def main():
     else:
         raise ValueError(f"Unknown abs mode {args.absmode!r} - valid options: {ABSMODES!r}")
 
-    # Normalize magnitude response
-    H_abs /= np.median(H_abs)
-
     # Estimate phase response
     if args.phasemode == "full":
         H_angle = np.angle(H_full)
@@ -54,8 +52,25 @@ def main():
     # Combine frequency response
     H = H_abs * np.exp(1j*H_angle)
 
-    # Calculate and save results
-    h = calculate_impulse_response(H)
+    # Calculate impulse response
+    h = np.real(np.fft.ifft(H))
+
+    # Apply fade to impulse response
+    N = len(h)
+    n = np.arange(N)
+    # fade = ((-n + N)*(n>N//2) + (N//2)*(n <= N//2)) / (N//2)
+    fade = (-n + N)/N
+    h *= fade
+
+    # Normalize impulse response
+    w = 2*np.pi * args.normfreq/fs
+    k = np.arange(len(h))
+    h /= np.abs(np.sum(h*np.exp(-1j*w*k)))
+
+    # Update frequency response with the impulse response changes
+    H = np.fft.fft(h)
+
+    # Save results
     save_impulse_response(f"{args.output}.wav", fs, h)
     plot_results(H, h, fs, f"{args.output}.png")
     plt.show()
@@ -75,10 +90,6 @@ def plot_results(H, h, fs, filename):
 
     fig.tight_layout()
     fig.savefig(filename)
-
-def calculate_impulse_response(H):
-    h = np.real(np.fft.ifft(H))
-    return h
 
 def save_impulse_response(filename, fs, h):
     sf.write(filename, h, samplerate=fs, subtype="PCM_24")
