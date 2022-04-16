@@ -16,7 +16,7 @@ def main():
     parser.add_argument("--output", "-o", help="Label used for the output file", default="ir_" + str(int(time.time())), type=str)
     parser.add_argument("--absmode", "-a", help=f"Mode for estimating absolute value ({'|'.join(ABSMODES)})", default="median", type=str)
     parser.add_argument("--phasemode", "-p", help=f"Mode for estimating phase ({'|'.join(PHASEMODES)})", default="full", type=str)
-    parser.add_argument("--normfreq", "-f", help="Frequency where the impulse response is normalized to zero gain", default=200, type=float)
+    parser.add_argument("--normfreq", "-f", help="Frequency where the impulse response is normalized to zero gain (Hz)", default=200, type=float)
 
     args = parser.parse_args()
 
