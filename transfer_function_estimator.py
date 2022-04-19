@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import soundfile as sf
 
-ABSMODES = ["median"]
-PHASEMODES = ["full", "zero"]
+ABSMODES = ["median", "mean", "full"]
+PHASEMODES = ["median", "mean", "full", "zero"]
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -17,9 +17,26 @@ def main():
     parser.add_argument("--absmode", "-a", help=f"Mode for estimating absolute value ({'|'.join(ABSMODES)})", default="median", type=str)
     parser.add_argument("--phasemode", "-p", help=f"Mode for estimating phase ({'|'.join(PHASEMODES)})", default="full", type=str)
     parser.add_argument("--normfreq", "-f", help="Frequency where the impulse response is normalized to zero gain (Hz)", default=200, type=float)
+    parser.add_argument("--all", help="Generate and impulse response for each absmode/phasemode combination", action="store_true")
+    parser.add_argument("--show", help="Show graphs after completion", action="store_true")
 
     args = parser.parse_args()
 
+    if args.all:
+        output = args.output
+        for a in ABSMODES:
+            for p in PHASEMODES:
+                args.absmode = a
+                args.phasemode = p
+                args.output = f"{output}_{a}_{p}"
+                run(args)
+    else:
+        run(args)
+
+    if args.show:
+        plt.show()
+
+def run(args):
     data, fs = sf.read(args.infile)
     if args.swapchannels:
         ydata, xdata = data.T
@@ -38,11 +55,19 @@ def main():
     # Estimate magnitude response
     if args.absmode == "median":
         H_abs = np.median(np.abs(H_blocks), axis=0)
+    elif args.absmode == "mean":
+        H_abs = np.mean(np.abs(H_blocks), axis=0)
+    elif args.absmode == "full":
+        H_abs = np.abs(H_full)
     else:
         raise ValueError(f"Unknown abs mode {args.absmode!r} - valid options: {ABSMODES!r}")
 
     # Estimate phase response
-    if args.phasemode == "full":
+    if args.phasemode == "median":
+        H_angle = np.median(np.unwrap(np.angle(H_blocks)), axis=0)
+    elif args.phasemode == "mean":
+        H_angle = np.mean(np.unwrap(np.angle(H_blocks)), axis=0)
+    elif args.phasemode == "full":
         H_angle = np.angle(H_full)
     elif args.phasemode == "zero":
         H_angle = np.zeros(args.length)
@@ -73,7 +98,6 @@ def main():
     # Save results
     save_impulse_response(f"{args.output}.wav", fs, h)
     plot_results(H, h, fs, f"{args.output}.png")
-    plt.show()
 
 def plot_results(H, h, fs, filename):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[8, 6])
