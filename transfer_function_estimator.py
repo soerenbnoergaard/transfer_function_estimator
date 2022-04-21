@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--normfreq", "-f", help="Frequency where the impulse response is normalized to zero gain (Hz)", default=200, type=float)
     parser.add_argument("--all", help="Generate and impulse response for each absmode/phasemode combination", action="store_true")
     parser.add_argument("--show", help="Show graphs after completion", action="store_true")
+    parser.add_argument("--stats", help="Calculate correlation statistics", action="store_true")
 
     args = parser.parse_args()
 
@@ -37,6 +38,11 @@ def main():
         plt.show()
 
 def run(args):
+    print("")
+    print(f"Input file: {args.infile}")
+    print(f"Magnitude estimation mode: {args.absmode}")
+    print(f"Phase estimation mode: {args.phasemode}")
+
     data, fs = sf.read(args.infile)
     if args.swapchannels:
         ydata, xdata = data.T
@@ -98,6 +104,12 @@ def run(args):
     # Save results
     save_impulse_response(f"{args.output}.wav", fs, h)
     plot_results(H, h, fs, f"{args.output}.png")
+
+    # Calculate statistics
+    if args.stats:
+        ydata_est = np.convolve(xdata, h, "same")
+        print("Correlation coefficient: {:11.6f}".format(np.corrcoef(ydata, ydata_est)[0, 1]))
+        print("Mean square error:       {:11.6f}".format(np.square(ydata - ydata_est).mean()))
 
 def plot_results(H, h, fs, filename):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=[8, 6])
